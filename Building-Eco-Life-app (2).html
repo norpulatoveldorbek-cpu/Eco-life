@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco Life v2 - Uzbek/Russian/English</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Unbounded:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Manrope', sans-serif; }
+        .logo { font-family: 'Unbounded', sans-serif; }
+        .glass { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.3); }
+        .dark .glass-card { background: rgba(17,24,39,0.7); border: 1px solid rgba(255,255,255,0.1); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)} }
+        .float { animation: float 3s ease-in-out infinite; }
+        @keyframes confetti { 0%{transform:translateY(-100vh) rotate(0)} 100%{transform:translateY(100vh) rotate(720deg)} }
+        .confetti { animation: confetti 3s linear forwards; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-950 dark:via-emerald-950 dark:to-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
+    
+    <!-- LANGUAGE TOGGLE -->
+    <div class="fixed top-4 right-4 z-[100] flex gap-1 p-1 glass-card rounded-2xl shadow-lg">
+        <button onclick="setLang('uz')" id="lang-uz" class="px-3 py-1.5 text-sm font-bold rounded-xl transition">UZ</button>
+        <button onclick="setLang('ru')" id="lang-ru" class="px-3 py-1.5 text-sm font-bold rounded-xl transition">RU</button>
+        <button onclick="setLang('en')" id="lang-en" class="px-3 py-1.5 text-sm font-bold rounded-xl transition">EN</button>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl mb-4 float">
+                    <span class="text-4xl">🌱</span>
+                </div>
+                <h1 class="logo text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2" id="welcomeTitle">Eco Life ga xush kelibsiz 🌱</h1>
+                <p class="text-gray-600 dark:text-gray-400" id="welcomeSub">Tabiatni asrang, ball to'plang</p>
+            </div>
+
+            <div class="glass-card rounded-[2rem] shadow-2xl p-8">
+                <div class="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 mb-6">
+                    <button id="tabLogin" class="flex-1 py-2.5 font-semibold rounded-xl transition bg-white dark:bg-gray-700 shadow">Kirish</button>
+                    <button id="tabSignup" class="flex-1 py-2.5 font-semibold rounded-xl transition text-gray-500">Ro'yxatdan o'tish</button>
+                </div>
+
+                <!-- LOGIN -->
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <input id="loginIdentity" type="text" placeholder="Email yoki Username" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none transition" value="demo@ecolife.uz">
+                    </div>
+                    <div>
+                        <input id="loginPassword" type="password" placeholder="Parol" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none transition" value="demo123">
+                    </div>
+                    <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:scale-[1.02] transition">Kirish</button>
+                    <p class="text-center text-sm text-gray-500">Demo: demo@ecolife.uz / demo123</p>
+                </form>
+
+                <!-- SIGNUP -->
+                <form id="signupForm" class="space-y-4 hidden">
+                    <div class="flex justify-center">
+                        <label class="cursor-pointer group">
+                            <div class="w-24 h-24 rounded-3xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border-4 border-white dark:border-gray-700 shadow-lg group-hover:scale-105 transition">
+                                <img id="signupPreview" class="w-full h-full object-cover hidden">
+                                <span id="signupPlaceholder" class="text-3xl">📷</span>
+                            </div>
+                            <input type="file" id="signupPhoto" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    <input id="signupUsername" type="text" placeholder="Username (3+ belgi)" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none">
+                    <input id="signupEmail" type="email" placeholder="Email" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none">
+                    <input id="signupPassword" type="password" placeholder="Parol (6+ belgi)" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none">
+                    <input id="signupLocation" type="text" placeholder="Joylashuv" value="Toshkent, Chilonzor" class="w-full px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-emerald-500 outline-none">
+                    <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg">Yaratish</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app" class="hidden min-h-screen">
+        <!-- HEADER -->
+        <header class="sticky top-0 z-30 glass-card border-b border-white/20">
+            <div class="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                        <span class="text-xl">🌱</span>
+                    </div>
+                    <span class="logo text-xl font-bold hidden sm:block">Eco Life</span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                        <span>🪙</span><span id="headerCoins" class="font-bold text-amber-700 dark:text-amber-300">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-100 dark:bg-violet-900/30">
+                        <span>⭐</span><span id="headerXp" class="font-bold text-violet-700 dark:text-violet-300">0</span>
+                    </div>
+                    <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                        <span id="headerLevel" class="font-bold text-emerald-700 dark:text-emerald-300">1</span>
+                    </div>
+                    <img id="headerAvatar" class="w-9 h-9 rounded-xl object-cover border-2 border-white shadow cursor-pointer" src="" alt="">
+                    <button onclick="logout()" class="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 transition" title="Chiqish">⎋</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto flex">
+            <!-- SIDEBAR DESKTOP -->
+            <aside class="hidden lg:block w-64 shrink-0 p-6">
+                <nav class="space-y-2 sticky top-24">
+                    <button data-page="home" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition bg-emerald-500 text-white shadow-lg"><span class="text-xl">🏠</span><span>Bosh sahifa</span></button>
+                    <button data-page="tasks" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition hover:bg-white/50 dark:hover:bg-gray-800"><span class="text-xl">✅</span><span>Vazifalar</span></button>
+                    <button data-page="map" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition hover:bg-white/50 dark:hover:bg-gray-800"><span class="text-xl">🗺️</span><span>Xarita</span></button>
+                    <button data-page="shop" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition hover:bg-white/50 dark:hover:bg-gray-800"><span class="text-xl">🛒</span><span>Do'kon</span></button>
+                    <button data-page="ai" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition hover:bg-white/50 dark:hover:bg-gray-800"><span class="text-xl">🤖</span><span>AI Tahlil</span></button>
+                    <button data-page="profile" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold transition hover:bg-white/50 dark:hover:bg-gray-800"><span class="text-xl">👤</span><span>Profil</span></button>
+                </nav>
+            </aside>
+
+            <!-- MAIN -->
+            <main class="flex-1 p-4 lg:p-6 pb-24 lg:pb-6">
+                <!-- HOME -->
+                <section id="page-home" class="page">
+                    <div class="mb-6">
+                        <h2 class="text-3xl font-bold mb-1" id="greeting">Salom, eco_demo!</h2>
+                        <p class="text-gray-600 dark:text-gray-400" id="greetingSub">Bugun tabiat uchun nima qilamiz?</p>
+                    </div>
+
+                    <!-- STATS -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="glass-card rounded-3xl p-5">
+                            <div class="flex items-center justify-between mb-2"><span class="text-2xl">🪙</span><span class="text-xs px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" id="statCoinsLabel">Tangalar</span></div>
+                            <div class="text-2xl font-bold" id="statCoins">250</div>
+                        </div>
+                        <div class="glass-card rounded-3xl p-5">
+                            <div class="flex items-center justify-between mb-2"><span class="text-2xl">⭐</span><span class="text-xs px-2 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700" id="statXpLabel">XP</span></div>
+                            <div class="text-2xl font-bold" id="statXp">180</div>
+                        </div>
+                        <div class="glass-card rounded-3xl p-5">
+                            <div class="flex items-center justify-between mb-2"><span class="text-2xl">🌳</span><span class="text-xs px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700" id="statTreesLabel">Daraxtlar</span></div>
+                            <div class="text-2xl font-bold" id="statTrees">3</div>
+                        </div>
+                        <div class="glass-card rounded-3xl p-5">
+                            <div class="flex items-center justify-between mb-2"><span class="text-2xl">🎯</span><span class="text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700" id="statTasksLabel">Vazifalar</span></div>
+                            <div class="text-2xl font-bold" id="statTasks">12</div>
+                        </div>
+                    </div>
+
+                    <!-- WEATHER + ACTIONS -->
+                    <div class="grid lg:grid-cols-3 gap-4 mb-6">
+                        <div class="glass-card rounded-3xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg" id="weatherTitle">Ob-havo</h3>
+                                <span class="text-2xl">🌤️</span>
+                            </div>
+                            <div class="text-4xl font-bold mb-1" id="weatherTemp">--°</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">Toshkent</div>
+                            <div id="weatherAdvice" class="text-sm p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">Yuklanmoqda...</div>
+                        </div>
+                        <div class="lg:col-span-2 glass-card rounded-3xl p-6">
+                            <h3 class="font-bold text-lg mb-4" id="quickActionsTitle">Tezkor harakatlar</h3>
+                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-3" id="quickActions"></div>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVITY FEED -->
+                    <div class="glass-card rounded-3xl p-6">
+                        <h3 class="font-bold text-lg mb-4" id="activityTitle">Faollik tasmasi</h3>
+                        <div id="activityFeed" class="space-y-3"></div>
+                    </div>
+                </section>
+
+                <!-- TASKS -->
+                <section id="page-tasks" class="page hidden">
+                    <h2 class="text-3xl font-bold mb-6" id="tasksTitle">Kunlik vazifalar</h2>
+                    <div id="tasksList" class="grid md:grid-cols-2 gap-4"></div>
+                </section>
+
+                <!-- MAP -->
+                <section id="page-map" class="page hidden">
+                    <h2 class="text-3xl font-bold mb-6" id="mapTitle">Eko Xarita</h2>
+                    <div class="glass-card rounded-3xl p-4 h-[500px] overflow-hidden">
+                        <div id="map" class="w-full h-full rounded-2xl"></div>
+                    </div>
+                </section>
+
+                <!-- SHOP -->
+                <section id="page-shop" class="page hidden">
+                    <h2 class="text-3xl font-bold mb-6" id="shopTitle">Eko Market</h2>
+                    <div id="shopGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+                </section>
+
+                <!-- AI -->
+                <section id="page-ai" class="page hidden">
+                    <h2 class="text-3xl font-bold mb-6" id="aiTitle">AI Maydon Tahlili</h2>
+                    <div class="glass-card rounded-3xl p-6 max-w-2xl mx-auto">
+                        <label class="block">
+                            <div id="aiDrop" class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-3xl p-12 text-center cursor-pointer hover:border-emerald-500 transition">
+                                <div class="text-5xl mb-3">📸</div>
+                                <p class="font-semibold" id="aiUploadText">Maydon rasmini yuklang</p>
+                                <p class="text-sm text-gray-500 mt-1">JPG, PNG</p>
+                                <img id="aiPreview" class="max-h-64 mx-auto mt-4 rounded-2xl hidden">
+                            </div>
+                            <input type="file" id="aiInput" accept="image/*" class="hidden">
+                        </label>
+                        <button id="aiAnalyze" class="w-full mt-4 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold disabled:opacity-50" disabled>Tahlil qilish</button>
+                        <div id="aiResult" class="hidden mt-6 p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20"></div>
+                    </div>
+                </section>
+
+                <!-- PROFILE -->
+                <section id="page-profile" class="page hidden">
+                    <div class="glass-card rounded-3xl p-6 mb-6">
+                        <div class="flex flex-col sm:flex-row items-center gap-6">
+                            <img id="profilePic" class="w-24 h-24 rounded-3xl object-cover border-4 border-white shadow-xl" src="">
+                            <div class="text-center sm:text-left flex-1">
+                                <h2 id="profileName" class="text-2xl font-bold">eco_demo</h2>
+                                <p id="profileLocation" class="text-gray-600 dark:text-gray-400">Toshkent, Chilonzor</p>
+                                <div class="flex gap-2 mt-3 justify-center sm:justify-start">
+                                    <span class="px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-bold">Level <span id="profileLevel">2</span></span>
+                                    <span class="px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-bold"><span id="profileCoins">250</span> 🪙</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="glass-card rounded-3xl p-6">
+                                <h3 class="font-bold text-lg mb-4" id="profileActivityTitle">Mening Faolligim</h3>
+                                <div id="profileActivities" class="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="glass-card rounded-3xl p-6">
+                                <h3 class="font-bold text-lg mb-4" id="profileTransTitle">Tranzaksiyalar</h3>
+                                <div id="profileTransactions" class="space-y-2 max-h-[180px] overflow-y-auto scrollbar-hide"></div>
+                            </div>
+                            <div class="glass-card rounded-3xl p-6">
+                                <h3 class="font-bold text-lg mb-4" id="profileInvTitle">Inventar</h3>
+                                <div id="profileInventory" class="grid grid-cols-3 gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- BOTTOM NAV MOBILE -->
+        <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 glass-card border-t rounded-t-[2rem]">
+            <div class="flex justify-around items-center h-20 px-4">
+                <button data-page="home" class="nav-btn flex flex-col items-center gap-1 p-2"><span class="text-2xl">🏠</span><span class="text-[10px]">Bosh</span></button>
+                <button data-page="tasks" class="nav-btn flex flex-col items-center gap-1 p-2"><span class="text-2xl">✅</span><span class="text-[10px]">Vazifa</span></button>
+                <button data-page="map" class="nav-btn flex flex-col items-center gap-1 p-2"><span class="text-2xl">🗺️</span><span class="text-[10px]">Xarita</span></button>
+                <button data-page="shop" class="nav-btn flex flex-col items-center gap-1 p-2"><span class="text-2xl">🛒</span><span class="text-[10px]">Do'kon</span></button>
+                <button data-page="profile" class="nav-btn flex flex-col items-center gap-1 p-2"><span class="text-2xl">👤</span><span class="text-[10px]">Profil</span></button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- ACTION MODAL -->
+    <div id="actionModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="glass-card rounded-[2rem] p-6 w-full max-w-sm shadow-2xl">
+            <h3 id="actionTitle" class="text-xl font-bold mb-4 text-center">Harakatni tasdiqlang</h3>
+            <div class="mb-4">
+                <label class="block">
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-6 text-center cursor-pointer hover:border-emerald-500">
+                        <div class="text-3xl mb-2">📷</div>
+                        <p class="text-sm" id="actionUploadText">Dalil rasmi yuklang (ixtiyoriy)</p>
+                        <img id="actionPreview" class="max-h-32 mx-auto mt-3 rounded-xl hidden">
+                    </div>
+                    <input type="file" id="actionImage" accept="image/*" class="hidden">
+                </label>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeActionModal()" class="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 font-semibold" id="cancelBtn">Bekor</button>
+                <button id="confirmAction" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold">Tasdiqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-[100] hidden">
+        <div class="glass-card px-6 py-3 rounded-2xl shadow-2xl font-semibold flex items-center gap-2">
+            <span id="toastIcon">✅</span>
+            <span id="toastText">Muvaffaqiyatli!</span>
+        </div>
+    </div>
+
+    <!-- CONFETTI -->
+    <div id="confettiContainer" class="fixed inset-0 pointer-events-none z-[200] overflow-hidden"></div>
+
+<script>
+// ===== TRANSLATIONS =====
+const LANGS = {
+    uz: {
+        welcome: "Eco Life ga xush kelibsiz 🌱", welcomeSub: "Tabiatni asrang, ball to'plang", login: "Kirish", signup: "Ro'yxatdan o'tish",
+        emailUser: "Email yoki Username", password: "Parol", username: "Username (3+ belgi)", email: "Email", location: "Joylashuv",
+        create: "Yaratish", hello: "Salom", helloSub: "Bugun tabiat uchun nima qilamiz?",
+        coins: "Tangalar", xp: "XP", trees: "Daraxtlar", tasksDone: "Vazifalar",
+        weather: "Ob-havo", weatherHot: "Issiq! 🌞 Daraxtlarni sug'oring", weatherGood: "Ajoyib ob-havo! 🌿 Ekish uchun ideal",
+        quick: "Tezkor harakatlar", activity: "Faollik tasmasi",
+        plant: "Daraxt ekish", water: "Sug'orish", weed: "Begona o't", flower: "Gul ekish", mission: "Missiya",
+        tasks: "Kunlik vazifalar", complete: "Bajarish", completed: "Bajarildi",
+        map: "Eko Xarita", shop: "Eko Market", buy: "Sotib olish", notEnough: "Tangalar yetarli emas!", purchased: "Sotib olindi!",
+        ai: "AI Maydon Tahlili", aiUpload: "Maydon rasmini yuklang", analyze: "Tahlil qilish", analyzing: "Tahlil qilinmoqda...",
+        myActivity: "Mening Faolligim", transactions: "Tranzaksiyalar", inventory: "Inventar",
+        uploadProof: "Dalil rasmi yuklang (ixtiyoriy)", confirm: "Tasdiqlash", cancel: "Bekor qilish",
+        levelUp: "🎉 Daraja oshdi!", logout: "Chiqish"
+    },
+    ru: {
+        welcome: "Добро пожаловать в Eco Life 🌱", welcomeSub: "Берегите природу, зарабатывайте баллы", login: "Вход", signup: "Регистрация",
+        emailUser: "Email или Username", password: "Пароль", username: "Username (3+ символа)", email: "Email", location: "Местоположение",
+        create: "Создать", hello: "Привет", helloSub: "Что сделаем для природы сегодня?",
+        coins: "Монеты", xp: "XP", trees: "Деревья", tasksDone: "Задачи",
+        weather: "Погода", weatherHot: "Жарко! 🌞 Полейте деревья", weatherGood: "Отличная погода! 🌿 Идеально для посадки",
+        quick: "Быстрые действия", activity: "Лента активности",
+        plant: "Посадить дерево", water: "Полив", weed: "Прополка", flower: "Посадить цветок", mission: "Миссия",
+        tasks: "Ежедневные задания", complete: "Выполнить", completed: "Выполнено",
+        map: "Эко Карта", shop: "Эко Маркет", buy: "Купить", notEnough: "Недостаточно монет!", purchased: "Куплено!",
+        ai: "AI Анализ участка", aiUpload: "Загрузите фото участка", analyze: "Анализировать", analyzing: "Анализируем...",
+        myActivity: "Моя активность", transactions: "Транзакции", inventory: "Инвентарь",
+        uploadProof: "Загрузите фото (необязательно)", confirm: "Подтвердить", cancel: "Отмена",
+        levelUp: "🎉 Уровень повышен!", logout: "Выйти"
+    },
+    en: {
+        welcome: "Welcome to Eco Life 🌱", welcomeSub: "Protect nature, earn points", login: "Login", signup: "Sign Up",
+        emailUser: "Email or Username", password: "Password", username: "Username (3+ chars)", email: "Email", location: "Location",
+        create: "Create", hello: "Hello", helloSub: "What shall we do for nature today?",
+        coins: "Coins", xp: "XP", trees: "Trees", tasksDone: "Tasks",
+        weather: "Weather", weatherHot: "Hot! 🌞 Water the trees", weatherGood: "Great weather! 🌿 Perfect for planting",
+        quick: "Quick Actions", activity: "Activity Feed",
+        plant: "Plant Tree", water: "Water", weed: "Weeding", flower: "Plant Flower", mission: "Mission",
+        tasks: "Daily Tasks", complete: "Complete", completed: "Done",
+        map: "Eco Map", shop: "Eco Market", buy: "Buy", notEnough: "Not enough coins!", purchased: "Purchased!",
+        ai: "AI Field Analysis", aiUpload: "Upload field photo", analyze: "Analyze", analyzing: "Analyzing...",
+        myActivity: "My Activity", transactions: "Transactions", inventory: "Inventory",
+        uploadProof: "Upload proof photo (optional)", confirm: "Confirm", cancel: "Cancel",
+        levelUp: "🎉 Level Up!", logout: "Logout"
+    }
+};
+
+let currentLang = localStorage.getItem('eco_lang') || 'uz';
+let currentUser = null;
+let currentAction = null;
+let actionImageData = null;
+let mapInstance = null;
+
+const ACTIONS = {
+    plant: { icon: '🌳', coins: 50, xp: 25 },
+    water: { icon: '💧', coins: 10, xp: 5 },
+    weed: { icon: '🌿', coins: 15, xp: 8 },
+    flower: { icon: '🌸', coins: 20, xp: 10 },
+    mission: { icon: '🎯', coins: 100, xp: 50 }
+};
+
+const SHOP_ITEMS = [
+    {id:1, icon:'🌱', price:150, uz:'Olma ko\'chati', ru:'Саженец яблони', en:'Apple Seedling'},
+    {id:2, icon:'🍑', price:120, uz:'O\'rik ko\'chati', ru:'Саженец абрикоса', en:'Apricot Seedling'},
+    {id:3, icon:'🌹', price:80, uz:'Atirgul', ru:'Роза', en:'Rose'},
+    {id:4, icon:'💧', price:200, uz:'Sug\'orish idishi', ru:'Лейка', en:'Watering Can'},
+    {id:5, icon:'🧤', price:50, uz:'Bog\'bon qo\'lqopi', ru:'Перчатки', en:'Gardening Gloves'},
+    {id:6, icon:'🪴', price:90, uz:'Kompost', ru:'Компост', en:'Compost'},
+    {id:7, icon:'🌳', price:100, uz:'Terak', ru:'Тополь', en:'Poplar'},
+    {id:8, icon:'🍓', price:70, uz:'Qulupnay', ru:'Клубника', en:'Strawberry'},
+];
+
+const TASKS = [
+    {id:1, icon:'🌳', action:'plant', uz:'3 ta daraxt ekish', ru:'Посадить 3 дерева', en:'Plant 3 trees', coins:150},
+    {id:2, icon:'💧', action:'water', uz:'5 ta daraxt sug\'orish', ru:'Полить 5 деревьев', en:'Water 5 trees', coins:50},
+    {id:3, icon:'🌿', action:'weed', uz:'Begona o\'t tozalash', ru:'Прополоть сорняки', en:'Remove weeds', coins:40},
+    {id:4, icon:'🌸', action:'flower', uz:'Gul ekish', ru:'Посадить цветы', en:'Plant flowers', coins:60},
+    {id:5, icon:'📸', action:'mission', uz:'Faollikni suratga olish', ru:'Сфотографировать активность', en:'Photo your activity', coins:30},
+    {id:6, icon:'♻️', action:'mission', uz:'Chiqindi yig\'ish', ru:'Собрать мусор', en:'Collect trash', coins:80},
+];
+
+// ===== INIT =====
+function init() {
+    // Initialize storage
+    if (!localStorage.getItem('eco_users')) {
+        const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzEwYjk4MSIvPjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1zaXplPSI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiPuKZjDwvdGV4dD48L3N2Zz4=';
+        const demoUser = {
+            id: 'user_demo', username: 'eco_demo', email: 'demo@ecolife.uz', password: btoa('demo123'),
+            location: 'Toshkent, Chilonzor', profilePic: defaultAvatar,
+            coins: 250, xp: 180, level: 2, treesPlanted: 3, tasksCompleted: 12, joined: new Date().toISOString()
+        };
+        localStorage.setItem('eco_users', JSON.stringify([demoUser]));
+        const activities = [
+            {id:'a1', userId:'user_demo', actionKey:'plant', action:'Daraxt ekish', coins:50, xp:25, location:'Chilonzor', date:new Date(Date.now()-86400000*2).toISOString(), image:null},
+            {id:'a2', userId:'user_demo', actionKey:'water', action:'Sug\'orish', coins:10, xp:5, location:'Chilonzor', date:new Date(Date.now()-86400000).toISOString(), image:null},
+            {id:'a3', userId:'user_demo', actionKey:'mission', action:'Missiya bajarish', coins:100, xp:50, location:'Chilonzor', date:new Date().toISOString(), image:null},
+        ];
+        localStorage.setItem('eco_activities', JSON.stringify(activities));
+        localStorage.setItem('eco_transactions', JSON.stringify([
+            {id:'t1', userId:'user_demo', type:'earn', amount:50, reason:'Daraxt ekish', date:activities[0].date},
+            {id:'t2', userId:'user_demo', type:'earn', amount:10, reason:'Sug\'orish', date:activities[1].date},
+            {id:'t3', userId:'user_demo', type:'earn', amount:100, reason:'Missiya', date:activities[2].date},
+        ]));
+        localStorage.setItem('eco_inventory', JSON.stringify([]));
+    }
+    
+    setLang(currentLang, true);
+    setupEventListeners();
+    checkAuth();
+}
+
+function t(key) { return LANGS[currentLang][key] || key; }
+
+function setLang(lang, noRefresh) {
+    currentLang = lang;
+    localStorage.setItem('eco_lang', lang);
+    document.querySelectorAll('[id^="lang-"]').forEach(btn => {
+        btn.classList.toggle('bg-emerald-500', btn.id === 'lang-'+lang);
+        btn.classList.toggle('text-white', btn.id === 'lang-'+lang);
+    });
+    if (!noRefresh) applyTranslations();
+}
+
+function applyTranslations() {
+    document.getElementById('welcomeTitle').textContent = t('welcome');
+    document.getElementById('welcomeSub').textContent = LANGS[currentLang].welcomeSub;
+    document.getElementById('tabLogin').textContent = t('login');
+    document.getElementById('tabSignup').textContent = t('signup');
+    document.getElementById('loginIdentity').placeholder = t('emailUser');
+    document.getElementById('loginPassword').placeholder = t('password');
+    document.getElementById('signupUsername').placeholder = t('username');
+    document.getElementById('signupEmail').placeholder = t('email');
+    document.getElementById('signupPassword').placeholder = t('password');
+    document.getElementById('signupLocation').placeholder = t('location');
+    document.querySelector('#loginForm button').textContent = t('login');
+    document.querySelector('#signupForm button').textContent = t('create');
+    
+    if (currentUser) {
+        document.getElementById('greeting').textContent = `${t('hello')}, ${currentUser.username}!`;
+        document.getElementById('greetingSub').textContent = t('helloSub');
+        document.getElementById('statCoinsLabel').textContent = t('coins');
+        document.getElementById('statXpLabel').textContent = 'XP';
+        document.getElementById('statTreesLabel').textContent = t('trees');
+        document.getElementById('statTasksLabel').textContent = t('tasksDone');
+        document.getElementById('weatherTitle').textContent = t('weather');
+        document.getElementById('quickActionsTitle').textContent = t('quick');
+        document.getElementById('activityTitle').textContent = t('activity');
+        document.getElementById('tasksTitle').textContent = t('tasks');
+        document.getElementById('mapTitle').textContent = t('map');
+        document.getElementById('shopTitle').textContent = t('shop');
+        document.getElementById('aiTitle').textContent = t('ai');
+        document.getElementById('aiUploadText').textContent = t('aiUpload');
+        document.getElementById('aiAnalyze').textContent = t('analyze');
+        document.getElementById('profileActivityTitle').textContent = t('myActivity');
+        document.getElementById('profileTransTitle').textContent = t('transactions');
+        document.getElementById('profileInvTitle').textContent = t('inventory');
+        document.getElementById('actionUploadText').textContent = t('uploadProof');
+        document.getElementById('confirmAction').textContent = t('confirm');
+        document.getElementById('cancelBtn').textContent = t('cancel');
+        
+        document.querySelectorAll('.nav-btn').forEach((btn,i) => {
+            const pages = ['home','tasks','map','shop','ai','profile'];
+            const labels = [t('hello'), t('tasks'), t('map'), t('shop'), 'AI', t('myActivity').split(' ')[1]||'Profil'];
+            if(btn.querySelector('span:last-child')) btn.querySelector('span:last-child').textContent = [LANGS[currentLang].hello, LANGS[currentLang].tasks.split(' ')[0], LANGS[currentLang].map, LANGS[currentLang].shop, 'AI', 'Profil'][pages.indexOf(btn.dataset.page)] || '';
+        });
+        
+        loadHome();
+        renderQuickActions();
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('tabLogin').onclick = () => switchTab('login');
+    document.getElementById('tabSignup').onclick = () => switchTab('signup');
+    document.getElementById('loginForm').onsubmit = handleLogin;
+    document.getElementById('signupForm').onsubmit = handleSignup;
+    document.getElementById('signupPhoto').onchange = handleSignupPhoto;
+    document.getElementById('actionImage').onchange = e => previewImage(e, 'actionPreview');
+    document.getElementById('confirmAction').onclick = confirmAction;
+    document.getElementById('aiInput').onchange = e => { previewImage(e, 'aiPreview'); document.getElementById('aiAnalyze').disabled = false; };
+    document.getElementById('aiAnalyze').onclick = runAI;
+    
+    document.querySelectorAll('[data-page]').forEach(btn => {
+        btn.onclick = () => navigate(btn.dataset.page);
+    });
+}
+
+function switchTab(tab) {
+    const login = tab === 'login';
+    document.getElementById('loginForm').classList.toggle('hidden', !login);
+    document.getElementById('signupForm').classList.toggle('hidden', login);
+    document.getElementById('tabLogin').classList.toggle('bg-white', login);
+    document.getElementById('tabLogin').classList.toggle('dark:bg-gray-700', login);
+    document.getElementById('tabLogin').classList.toggle('shadow', login);
+    document.getElementById('tabSignup').classList.toggle('bg-white', !login);
+    document.getElementById('tabSignup').classList.toggle('dark:bg-gray-700', !login);
+    document.getElementById('tabSignup').classList.toggle('shadow', !login);
+}
+
+function checkAuth() {
+    const userId = localStorage.getItem('eco_current');
+    if (userId) {
+        const users = JSON.parse(localStorage.getItem('eco_users'));
+        currentUser = users.find(u => u.id === userId);
+        if (currentUser) showApp();
+    }
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const identity = document.getElementById('loginIdentity').value.trim().toLowerCase();
+    const password = btoa(document.getElementById('loginPassword').value);
+    const users = JSON.parse(localStorage.getItem('eco_users'));
+    const user = users.find(u => (u.email.toLowerCase() === identity || u.username.toLowerCase() === identity) && u.password === password);
+    
+    if (user) {
+        currentUser = user;
+        localStorage.setItem('eco_current', user.id);
+        showToast('✅ ' + t('login') + ' muvaffaqiyatli');
+        showApp();
+    } else {
+        showToast('❌ Xato login yoki parol');
+    }
+}
+
+function handleSignup(e) {
+    e.preventDefault();
+    const username = document.getElementById('signupUsername').value.trim();
+    const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+    const password = document.getElementById('signupPassword').value;
+    const location = document.getElementById('signupLocation').value.trim();
+    const photo = document.getElementById('signupPreview').src;
+    
+    if (username.length < 3) return showToast('❌ Username 3+ belgi');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('❌ Email noto\'g\'ri');
+    if (password.length < 6) return showToast('❌ Parol 6+ belgi');
+    
+    const users = JSON.parse(localStorage.getItem('eco_users'));
+    if (users.find(u => u.email === email || u.username.toLowerCase() === username.toLowerCase())) {
+        return showToast('❌ User mavjud');
+    }
+    
+    const newUser = {
+        id: 'user_' + Date.now(),
+        username, email, password: btoa(password), location,
+        profilePic: photo || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzEwYjk4MSIvPjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1zaXplPSI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiPuKZjDwvdGV4dD48L3N2Zz4=',
+        coins: 0, xp: 0, level: 1, treesPlanted: 0, tasksCompleted: 0, joined: new Date().toISOString()
+    };
+    users.push(newUser);
+    localStorage.setItem('eco_users', JSON.stringify(users)); // BU YERDA FIREBASE ULASH MUMKIN
+    currentUser = newUser;
+    localStorage.setItem('eco_current', newUser.id);
+    showToast('✅ ' + t('create') + '!');
+    showApp();
+}
+
+function handleSignupPhoto(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            document.getElementById('signupPreview').src = ev.target.result;
+            document.getElementById('signupPreview').classList.remove('hidden');
+            document.getElementById('signupPlaceholder').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function showApp() {
+    document.getElementById('auth').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    updateHeader();
+    applyTranslations();
+    loadHome();
+    loadWeather();
+    navigate('home');
+}
+
+function updateHeader() {
+    document.getElementById('headerCoins').textContent = currentUser.coins;
+    document.getElementById('headerXp').textContent = currentUser.xp;
+    document.getElementById('headerLevel').textContent = currentUser.level;
+    document.getElementById('headerAvatar').src = currentUser.profilePic;
+}
+
+function navigate(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.getElementById('page-'+page).classList.remove('hidden');
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        const active = btn.dataset.page === page;
+        btn.classList.toggle('bg-emerald-500', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('shadow-lg', active);
+    });
+    if (page === 'home') loadHome();
+    if (page === 'tasks') loadTasks();
+    if (page === 'map') loadMap();
+    if (page === 'shop') loadShop();
+    if (page === 'ai') {} // already
+    if (page === 'profile') loadProfile();
+}
+
+function loadHome() {
+    document.getElementById('statCoins').textContent = currentUser.coins;
+    document.getElementById('statXp').textContent = currentUser.xp;
+    document.getElementById('statTrees').textContent = currentUser.treesPlanted;
+    document.getElementById('statTasks').textContent = currentUser.tasksCompleted;
+    renderQuickActions();
+    loadActivityFeed();
+}
+
+function renderQuickActions() {
+    const container = document.getElementById('quickActions');
+    container.innerHTML = '';
+    Object.entries(ACTIONS).forEach(([key, act]) => {
+        const names = {plant:t('plant'), water:t('water'), weed:t('weed'), flower:t('flower'), mission:t('mission')};
+        const div = document.createElement('button');
+        div.className = 'glass-card rounded-2xl p-4 hover:scale-105 transition text-center';
+        div.innerHTML = `<div class="text-3xl mb-1">${act.icon}</div><div class="text-xs font-semibold">${names[key]}</div><div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">+${act.coins} 🪙</div>`;
+        div.onclick = () => openActionModal(key);
+        container.appendChild(div);
+    });
+}
+
+function loadWeather() {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=41.2995&longitude=69.2401&current=temperature_2m&timezone=Asia%2FTashkent')
+        .then(r => r.json())
+        .then(data => {
+            const temp = Math.round(data.current.temperature_2m);
+            document.getElementById('weatherTemp').textContent = temp + '°';
+            document.getElementById('weatherAdvice').textContent = temp > 30 ? t('weatherHot') : t('weatherGood');
+        })
+        .catch(() => {
+            document.getElementById('weatherTemp').textContent = '28°';
+            document.getElementById('weatherAdvice').textContent = t('weatherGood');
+        });
+}
+
+function openActionModal(type) {
+    currentAction = type;
+    actionImageData = null;
+    document.getElementById('actionPreview').classList.add('hidden');
+    document.getElementById('actionImage').value = '';
+    document.getElementById('actionTitle').textContent = ACTIONS[type].icon + ' ' + ({plant:t('plant'), water:t('water'), weed:t('weed'), flower:t('flower'), mission:t('mission')}[type]);
+    document.getElementById('actionModal').classList.remove('hidden');
+    document.getElementById('actionModal').classList.add('flex');
+}
+
+function closeActionModal() {
+    document.getElementById('actionModal').classList.add('hidden');
+    document.getElementById('actionModal').classList.remove('flex');
+}
+
+function previewImage(e, previewId) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            document.getElementById(previewId).src = ev.target.result;
+            document.getElementById(previewId).classList.remove('hidden');
+            if (previewId === 'actionPreview') actionImageData = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function confirmAction() {
+    const act = ACTIONS[currentAction];
+    const oldLevel = currentUser.level;
+    
+    // Update user
+    currentUser.coins += act.coins;
+    currentUser.xp += act.xp;
+    currentUser.level = Math.floor(currentUser.xp / 100) + 1;
+    if (currentAction === 'plant') currentUser.treesPlanted++;
+    if (currentAction === 'mission') currentUser.tasksCompleted++;
+    
+    // Save user
+    const users = JSON.parse(localStorage.getItem('eco_users'));
+    const idx = users.findIndex(u => u.id === currentUser.id);
+    users[idx] = currentUser;
+    localStorage.setItem('eco_users', JSON.stringify(users)); // BU YERDA FIREBASE ULASH MUMKIN
+    
+    // Activity
+    const activities = JSON.parse(localStorage.getItem('eco_activities') || '[]');
+    const names = {plant:'Daraxt ekish', water:'Sug\'orish', weed:'Begona o\'t', flower:'Gul ekish', mission:'Missiya'};
+    activities.unshift({
+        id: 'a'+Date.now(), userId: currentUser.id, actionKey: currentAction,
+        action: names[currentAction], coins: act.coins, xp: act.xp,
+        location: currentUser.location, date: new Date().toISOString(), image: actionImageData
+    });
+    localStorage.setItem('eco_activities', JSON.stringify(activities));
+    
+    // Transaction
+    const transactions = JSON.parse(localStorage.getItem('eco_transactions') || '[]');
+    transactions.unshift({id:'t'+Date.now(), userId:currentUser.id, type:'earn', amount:act.coins, reason:names[currentAction], date:new Date().toISOString()});
+    localStorage.setItem('eco_transactions', JSON.stringify(transactions));
+    
+    closeActionModal();
+    updateHeader();
+    loadHome();
+    showToast(`+${act.coins} 🪙 +${act.xp} ⭐`);
+    launchConfetti();
+    
+    if (currentUser.level > oldLevel) {
+        setTimeout(() => {
+            showToast(t('levelUp') + ' Level ' + currentUser.level);
+            launchConfetti();
+        }, 500);
+    }
+}
+
+function loadActivityFeed() {
+    const activities = JSON.parse(localStorage.getItem('eco_activities') || '[]').filter(a => a.userId === currentUser.id).slice(0,5);
+    const feed = document.getElementById('activityFeed');
+    feed.innerHTML = activities.length ? activities.map(a => `
+        <div class="flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xl">${ACTIONS[a.actionKey]?.icon || '✅'}</div>
+            <div class="flex-1">
+                <div class="font-semibold text-sm">${a.action}</div>
+                <div class="text-xs text-gray-500">${new Date(a.date).toLocaleString(currentLang==='uz'?'uz-UZ':'ru-RU', {hour:'2-digit', minute:'2-digit', day:'numeric', month:'short'})} • ${a.location}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm font-bold text-amber-600">+${a.coins}</div>
+                <div class="text-xs text-violet-600">+${a.xp} XP</div>
+            </div>
+        </div>
+    `).join('') : `<p class="text-center text-gray-500 py-8">Hali faollik yo'q</p>`;
+}
+
+function loadTasks() {
+    const container = document.getElementById('tasksList');
+    container.innerHTML = TASKS.map(task => {
+        const name = task[currentLang];
+        return `
+        <div class="glass-card rounded-3xl p-5 flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-2xl shadow-lg">${task.icon}</div>
+            <div class="flex-1">
+                <div class="font-bold">${name}</div>
+                <div class="text-sm text-emerald-600 dark:text-emerald-400 font-semibold">+${task.coins} 🪙</div>
+            </div>
+            <button onclick="completeTask('${task.action}', ${task.coins})" class="px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold hover:scale-105 transition">${t('complete')}</button>
+        </div>`;
+    }).join('');
+}
+
+function completeTask(actionKey, bonusCoins) {
+    currentAction = actionKey;
+    const act = {...ACTIONS[actionKey]};
+    act.coins += bonusCoins;
+    ACTIONS[actionKey].coins = act.coins; // temp
+    openActionModal(actionKey);
+    document.getElementById('confirmAction').onclick = () => {
+        const oldCoins = ACTIONS[actionKey].coins;
+        ACTIONS[actionKey].coins = oldCoins; // restore
+        // custom confirm with bonus
+        const oldLevel = currentUser.level;
+        currentUser.coins += act.coins;
+        currentUser.xp += act.xp;
+        currentUser.level = Math.floor(currentUser.xp/100)+1;
+        currentUser.tasksCompleted++;
+        const users = JSON.parse(localStorage.getItem('eco_users')); users[users.findIndex(u=>u.id===currentUser.id)]=currentUser; localStorage.setItem('eco_users', JSON.stringify(users));
+        const activities = JSON.parse(localStorage.getItem('eco_activities')||'[]'); activities.unshift({id:'a'+Date.now(), userId:currentUser.id, actionKey, action:'Vazifa: '+TASKS.find(t=>t.action===actionKey)[currentLang], coins:act.coins, xp:act.xp, location:currentUser.location, date:new Date().toISOString(), image:actionImageData}); localStorage.setItem('eco_activities', JSON.stringify(activities));
+        const transactions = JSON.parse(localStorage.getItem('eco_transactions')||'[]'); transactions.unshift({id:'t'+Date.now(), userId:currentUser.id, type:'earn', amount:act.coins, reason:'Vazifa', date:new Date().toISOString()}); localStorage.setItem('eco_transactions', JSON.stringify(transactions));
+        closeActionModal(); updateHeader(); loadTasks(); showToast(`+${act.coins} 🪙`); launchConfetti();
+    };
+}
+
+function loadMap() {
+    if (mapInstance) return;
+    mapInstance = L.map('map').setView([41.2995, 69.2401], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
+    const markers = [
+        [41.3111,69.2797, 'Yunusobod bog\'i 🌳'],
+        [41.2850,69.2030, 'Chilonzor xiyoboni 🌿'],
+        [41.3275,69.2280, 'Milliy bog\' 🌸'],
+        [41.2646,69.2430, 'Sergeli eko-hud 💧'],
+        [41.3400,69.2894, 'TTZ yashil maydon 🌱'],
+        [41.2995,69.2401, 'Markaziy xiyobon 🎯'],
+    ];
+    markers.forEach(m => L.marker([m[0], m[1]]).addTo(mapInstance).bindPopup(`<b>${m[2]}</b><br>Eco Life nuqtasi`));
+}
+
+function loadShop() {
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = SHOP_ITEMS.map(item => {
+        const name = item[currentLang];
+        return `
+        <div class="glass-card rounded-3xl p-5 hover:scale-[1.02] transition">
+            <div class="text-5xl mb-3 text-center">${item.icon}</div>
+            <h4 class="font-bold text-center mb-1">${name}</h4>
+            <div class="text-center mb-4"><span class="px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold">${item.price} 🪙</span></div>
+            <button onclick="buyItem(${item.id})" class="w-full py-2.5 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition">${t('buy')}</button>
+        </div>`;
+    }).join('');
+}
+
+function buyItem(id) {
+    const item = SHOP_ITEMS.find(i => i.id === id);
+    if (currentUser.coins < item.price) return showToast('❌ ' + t('notEnough'));
+    
+    currentUser.coins -= item.price;
+    const users = JSON.parse(localStorage.getItem('eco_users')); users[users.findIndex(u=>u.id===currentUser.id)]=currentUser; localStorage.setItem('eco_users', JSON.stringify(users));
+    
+    const inv = JSON.parse(localStorage.getItem('eco_inventory')||'[]'); inv.push({id:'inv'+Date.now(), userId:currentUser.id, itemId:id, name:item[currentLang], icon:item.icon, date:new Date().toISOString()}); localStorage.setItem('eco_inventory', JSON.stringify(inv));
+    
+    const trans = JSON.parse(localStorage.getItem('eco_transactions')||'[]'); trans.unshift({id:'t'+Date.now(), userId:currentUser.id, type:'spend', amount:item.price, reason:item[currentLang], date:new Date().toISOString()}); localStorage.setItem('eco_transactions', JSON.stringify(trans));
+    
+    updateHeader(); loadShop(); showToast('✅ ' + t('purchased'));
+}
+
+function runAI() {
+    const btn = document.getElementById('aiAnalyze');
+    const result = document.getElementById('aiResult');
+    btn.disabled = true; btn.textContent = t('analyzing'); result.classList.add('hidden');
+    
+    setTimeout(() => {
+        const texts = {
+            uz: "📏 Maydon: 120m²\n🌳 Sig'imi: 8-12 ta daraxt\n🌱 Toshkent uchun: Olma, O'rik, Terak, Tut\n🌾 Tuproq: Qumoq, pH 7.2\n💧 Sug'orish: Haftada 2-3 marta\n✨ Tavsiya: Bahorda ekish ideal",
+            ru: "📏 Площадь: 120м²\n🌳 Вместимость: 8-12 деревьев\n🌱 Для Ташкента: Яблоня, Абрикос, Тополь, Шелковица\n🌾 Почва: Суглинок, pH 7.2\n💧 Полив: 2-3 раза в неделю\n✨ Рекомендация: Весенняя посадка идеальна",
+            en: "📏 Area: 120m²\n🌳 Capacity: 8-12 trees\n🌱 For Tashkent: Apple, Apricot, Poplar, Mulberry\n🌾 Soil: Loam, pH 7.2\n💧 Watering: 2-3 times/week\n✨ Recommendation: Spring planting ideal"
+        };
+        result.innerHTML = `<h4 class="font-bold mb-2">${t('ai')}:</h4><pre class="whitespace-pre-wrap text-sm leading-relaxed">${texts[currentLang]}</pre>`;
+        result.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = t('analyze');
+        showToast('✅ AI tahlil tayyor');
+    }, 2000);
+}
+
+function loadProfile() {
+    document.getElementById('profilePic').src = currentUser.profilePic;
+    document.getElementById('profileName').textContent = currentUser.username;
+    document.getElementById('profileLocation').textContent = currentUser.location;
+    document.getElementById('profileLevel').textContent = currentUser.level;
+    document.getElementById('profileCoins').textContent = currentUser.coins;
+    
+    const activities = JSON.parse(localStorage.getItem('eco_activities')||'[]').filter(a=>a.userId===currentUser.id);
+    document.getElementById('profileActivities').innerHTML = activities.map(a => `
+        <div class="flex gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
+            ${a.image ? `<img src="${a.image}" class="w-16 h-16 rounded-xl object-cover">` : `<div class="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">${ACTIONS[a.actionKey]?.icon||'✅'}</div>`}
+            <div class="flex-1">
+                <div class="font-semibold text-sm">${a.action}</div>
+                <div class="text-xs text-gray-500">${new Date(a.date).toLocaleDateString()} • ${a.location}</div>
+                <div class="text-xs mt-1"><span class="text-amber-600">+${a.coins} 🪙</span> <span class="text-violet-600">+${a.xp} XP</span></div>
+            </div>
+        </div>
+    `).join('') || '<p class="text-gray-500 text-center py-8">Hali yo\'q</p>';
+    
+    const transactions = JSON.parse(localStorage.getItem('eco_transactions')||'[]').filter(t=>t.userId===currentUser.id).slice(0,10);
+    document.getElementById('profileTransactions').innerHTML = transactions.map(tr => `
+        <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+            <div><div class="text-sm font-medium">${tr.reason}</div><div class="text-[10px] text-gray-500">${new Date(tr.date).toLocaleDateString()}</div></div>
+            <div class="font-bold text-sm ${tr.type==='earn'?'text-emerald-600':'text-red-500'}">${tr.type==='earn'?'+':'-'}${tr.amount}</div>
+        </div>
+    `).join('');
+    
+    const inventory = JSON.parse(localStorage.getItem('eco_inventory')||'[]').filter(i=>i.userId===currentUser.id);
+    document.getElementById('profileInventory').innerHTML = inventory.length ? inventory.map(i => `
+        <div class="aspect-square glass-card rounded-2xl flex flex-col items-center justify-center p-2" title="${i.name}">
+            <div class="text-2xl">${i.icon}</div>
+            <div class="text-[9px] mt-1 text-center leading-tight">${i.name}</div>
+        </div>
+    `).join('') : '<p class="col-span-3 text-center text-gray-500 text-sm py-4">Bo\'sh</p>';
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+function launchConfetti() {
+    const container = document.getElementById('confettiContainer');
+    const emojis = ['🌱','🌳','🌿','💧','✨','🎉','🪙','⭐'];
+    for (let i=0; i<40; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti absolute text-2xl';
+        el.style.left = Math.random()*100 + 'vw';
+        el.style.animationDelay = Math.random()*0.5 + 's';
+        el.style.animationDuration = (2 + Math.random()*2) + 's';
+        el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
+}
+
+function logout() {
+    localStorage.removeItem('eco_current');
+    currentUser = null;
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('auth').classList.remove('hidden');
+    showToast('👋 ' + t('logout'));
+}
+
+// INIT
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
